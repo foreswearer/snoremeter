@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#07090c">
+<title>Roncómetro</title>
+<style>
+  :root{
+    --bg:#07090c; --panel:#0e1218; --line:#1b2230;
+    --text:#c9d3de; --dim:#5a6878; --faint:#333e4e;
+    --amber:#d99a3d; --amber-dim:#8a6428; --rec:#c0392b; --ok:#3d9970;
+    --btn-txt:#120c02; --meter-bg:#0a0d12; --btn2:#161d28;
+    --mono:"SF Mono","Roboto Mono",ui-monospace,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  html[data-theme="light"]{
+    --bg:#f1efe9; --panel:#fbfaf6; --line:#dcd6c8;
+    --text:#2b3038; --dim:#6d7683; --faint:#a39d8e;
+    --amber:#a86f14; --amber-dim:#8a6428; --rec:#b03427; --ok:#2e7d5b;
+    --btn-txt:#fff8ec; --meter-bg:#e7e3d8; --btn2:#eee9dd;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100%}
+  body{padding:18px 16px 40px;max-width:560px;margin:0 auto}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+  .head-l{display:flex;align-items:baseline;gap:10px}
+  h1{font-size:15px;letter-spacing:.28em;font-weight:600;color:var(--amber);text-transform:uppercase}
+  .ver{font-family:var(--mono);font-size:10px;color:var(--faint)}
+  #btnLang,#btnTheme{font-family:var(--mono);font-size:11px;letter-spacing:.08em;background:var(--panel);
+    color:var(--dim);border:1px solid var(--line);border-radius:7px;padding:5px 10px}
+  .head-r{display:flex;gap:6px}
+  #btnLang b{color:var(--amber);font-weight:600}
+  .tagline{font-size:11px;color:var(--dim);margin-bottom:18px}
+
+  .meter-wrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+  .meter-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .db-now{font-family:var(--mono);font-size:34px;font-weight:300;color:var(--text)}
+  .db-now small{font-size:13px;color:var(--dim)}
+  .state-tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--dim)}
+  .state-tag.evt{color:var(--rec)}
+  .bar-bg{height:14px;background:var(--meter-bg);border-radius:7px;overflow:hidden;position:relative;border:1px solid var(--line)}
+  .bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--ok),var(--amber));transition:width .08s linear}
+  .bar-thresh{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--rec);opacity:.9}
+  .meter-legend{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:5px}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .stat b{display:block;font-family:var(--mono);font-size:20px;font-weight:500;color:var(--text)}
+  .stat span{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+  .controls{display:flex;gap:10px;margin-bottom:14px}
+  button{font-family:var(--sans);border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600}
+  .btn-main{flex:1;padding:16px;background:var(--amber);color:var(--btn-txt)}
+  .btn-main.rec{background:var(--rec);color:#fff}
+  .btn-dark{padding:16px 18px;background:var(--panel);color:var(--dim);border:1px solid var(--line)}
+  button:disabled{opacity:.35;cursor:default}
+
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:14px}
+  summary{padding:12px 14px;font-size:12px;color:var(--dim);cursor:pointer;letter-spacing:.05em;text-transform:uppercase}
+  .cfg{padding:4px 14px 16px;display:flex;flex-direction:column;gap:14px}
+  .cfg label{font-size:12px;color:var(--text);display:flex;justify-content:space-between}
+  .cfg label output{font-family:var(--mono);color:var(--amber)}
+  input[type=range]{width:100%;accent-color:var(--amber);margin-top:6px}
+  .cfg .hint{font-size:10px;color:var(--faint);margin-top:2px}
+  .cfg .row{display:flex;align-items:center;gap:8px;font-size:12px}
+  .cfg .row input[type=checkbox]{accent-color:var(--amber);width:16px;height:16px}
+
+  .tl-wrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .tl-wrap h2, .evts h2{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+  canvas{width:100%;height:70px;display:block}
+
+  .evts{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .evt-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px}
+  .evt-row:last-child{border-bottom:none}
+  .evt-t{color:var(--text)}
+  .evt-d{color:var(--dim);flex:1}
+  .evt-row button{background:var(--btn2);color:var(--text);border:1px solid var(--line);padding:6px 10px;border-radius:7px;font-size:12px}
+  .empty{font-size:12px;color:var(--faint);padding:8px 0}
+  .exports{display:flex;gap:8px;margin-top:12px}
+  .exports button{flex:1;padding:10px;background:var(--btn2);color:var(--text);border:1px solid var(--line);font-size:12px;font-weight:500}
+
+  .note{font-size:11px;color:var(--faint);margin-top:16px;line-height:1.5}
+
+  #blackout{position:fixed;inset:0;background:#000;z-index:99;display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px}
+  #blackout.on{display:flex}
+  #bo-clock{font-family:var(--mono);font-size:22px;color:#1c2129;font-weight:300}
+  #bo-dot{width:6px;height:6px;border-radius:50%;background:#3a1210}
+  #bo-dot.live{animation:pulse 2.5s infinite}
+  #bo-evt{font-family:var(--mono);font-size:11px;color:#241a10}
+  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:.9}}
+  @media (prefers-reduced-motion: reduce){#bo-dot.live{animation:none;opacity:.6}}
+  audio{height:32px;max-width:150px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-l"><h1 id="appName">Roncómetro</h1><span class="ver" id="i-ver"></span></div>
+  <div class="head-r"><button id="btnTheme" aria-label="Modo claro/oscuro · Light/dark mode"></button><button id="btnLang" aria-label="Cambiar idioma / Switch language"></button></div>
+</header>
+<p class="tagline" id="i-tagline"></p>
+
+<div class="meter-wrap">
+  <div class="meter-top">
+    <span class="db-now"><span id="dbVal">—</span><small> dBFS</small></span>
+    <span class="state-tag" id="stateTag"></span>
+  </div>
+  <div class="bar-bg">
+    <div class="bar-fill" id="barFill"></div>
+    <div class="bar-thresh" id="barThresh" style="left:60%"></div>
+  </div>
+  <div class="meter-legend"><span>−80</span><span id="floorLbl"></span><span>0</span></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><b id="stElapsed">0:00</b><span id="i-stSession"></span></div>
+  <div class="stat"><b id="stEvents">0</b><span id="i-stEvents"></span></div>
+  <div class="stat"><b id="stSnoreTime">0:00</b><span id="i-stNoise"></span></div>
+</div>
+
+<div class="controls">
+  <button class="btn-main" id="btnMain"></button>
+  <button class="btn-dark" id="btnBlack" disabled></button>
+</div>
+
+<details>
+  <summary id="i-cfgTitle"></summary>
+  <div class="cfg">
+    <div>
+      <label><span id="i-thrLbl"></span> <output id="oThresh">15 dB</output></label>
+      <input type="range" id="rThresh" min="6" max="30" step="1" value="15">
+      <div class="hint" id="i-thrHint"></div>
+    </div>
+    <div>
+      <label><span id="i-quietLbl"></span> <output id="oQuiet">4 s</output></label>
+      <input type="range" id="rQuiet" min="2" max="10" step="1" value="4">
+      <div class="hint" id="i-quietHint"></div>
+    </div>
+    <div class="row">
+      <input type="checkbox" id="cAutoSave">
+      <span id="i-autoSave"></span>
+    </div>
+  </div>
+</details>
+
+<div class="tl-wrap">
+  <h2 id="i-tlTitle"></h2>
+  <canvas id="tlCanvas" width="1000" height="140"></canvas>
+</div>
+
+<div class="evts">
+  <h2 id="i-evtTitle"></h2>
+  <div id="evtList"></div>
+  <div class="exports">
+    <button id="btnCsv" disabled></button>
+    <button id="btnAllWav" disabled></button>
+  </div>
+</div>
+
+<p class="note" id="i-note"></p>
+
+<div id="blackout">
+  <div id="bo-dot"></div>
+  <div id="bo-clock">--:--</div>
+  <div id="bo-evt"></div>
+</div>
+
+<script>
+"use strict";
+// ---------- i18n ----------
+const I18N={
+es:{
+  name:"Roncómetro", ver:"v1.1 · WAV 16 kHz crudo",
+  tagline:"Detección de eventos sonoros nocturnos con umbral adaptativo. Todo local: nada sale del dispositivo.",
+  stStandby:"EN ESPERA", stListen:"ESCUCHANDO", stEvent:"● EVENTO", stEnded:"SESIÓN TERMINADA",
+  floor:"suelo", stSession:"sesión", stEvents:"eventos", stNoise:"tiempo ruido",
+  start:"Iniciar sesión", stop:"Detener sesión", black:"Pantalla en negro",
+  cfgTitle:"Ajustes del detector",
+  thrLbl:"Umbral sobre suelo de ruido",
+  thrHint:"Un evento se dispara cuando el nivel supera el suelo adaptativo en esta cantidad durante ≥0,3 s.",
+  quietLbl:"Silencio para cerrar evento",
+  quietHint:"Segundos por debajo del umbral para dar el evento por terminado. Pre-roll fijo: 5 s. Máx. por evento: 120 s.",
+  autoSave:"Descargar automáticamente cada evento (WAV) al cerrarse — red de seguridad si la pestaña muere",
+  tlTitle:"Cronología · nivel máximo por 15 s",
+  evtTitle:"Eventos grabados",
+  empty:"Sin eventos todavía. Duerme, que yo vigilo.",
+  peak:"pico", csv:"Exportar CSV", allWav:"Descargar todos los WAV",
+  note:"Requisitos: servir por HTTPS (o localhost), Chrome/Android, móvil enchufado y pantalla encendida (la app la mantiene despierta; usa «Pantalla en negro» y baja el brillo al mínimo). No cierres la pestaña: los eventos viven en memoria hasta que los descargues. Audio sin cancelación de eco, sin supresión de ruido y sin control automático de ganancia.",
+  recEvt:"● grabando evento",
+  micErr:"Sin acceso al micrófono: ", micErr2:"\n¿Estás en HTTPS o localhost?",
+  memWarn:"Límite de memoria de audio alcanzado (~200 MB). Se siguen contando eventos pero sin guardar más audio. Descarga y reinicia la sesión.",
+  unload:"Hay grabaciones sin descargar.",
+  wavPrefix:"ronquido", langBtn:"<b>ES</b> · EN"
+},
+en:{
+  name:"SnoreMeter", ver:"v1.1 · raw 16 kHz WAV",
+  tagline:"Overnight sound-event detection with an adaptive threshold. Fully local: nothing leaves the device.",
+  stStandby:"STANDBY", stListen:"LISTENING", stEvent:"● EVENT", stEnded:"SESSION ENDED",
+  floor:"floor", stSession:"session", stEvents:"events", stNoise:"noise time",
+  start:"Start session", stop:"Stop session", black:"Black screen",
+  cfgTitle:"Detector settings",
+  thrLbl:"Threshold above noise floor",
+  thrHint:"An event fires when the level exceeds the adaptive floor by this amount for ≥0.3 s.",
+  quietLbl:"Silence to close event",
+  quietHint:"Seconds below threshold before the event is considered over. Fixed pre-roll: 5 s. Max per event: 120 s.",
+  autoSave:"Auto-download each event (WAV) when it closes — safety net in case the tab dies",
+  tlTitle:"Timeline · max level per 15 s",
+  evtTitle:"Recorded events",
+  empty:"No events yet. Sleep — I'm on watch.",
+  peak:"peak", csv:"Export CSV", allWav:"Download all WAVs",
+  note:"Requirements: serve over HTTPS (or localhost), Chrome/Android, phone plugged in and screen on (the app keeps it awake; use “Black screen” and set brightness to minimum). Don't close the tab: events live in memory until you download them. Audio captured with no echo cancellation, no noise suppression and no automatic gain control.",
+  recEvt:"● recording event",
+  micErr:"No microphone access: ", micErr2:"\nAre you on HTTPS or localhost?",
+  memWarn:"Audio memory limit reached (~200 MB). Events are still counted but no more audio is stored. Download and restart the session.",
+  unload:"There are recordings you haven't downloaded.",
+  wavPrefix:"snore", langBtn:"ES · <b>EN</b>"
+}};
+// almacenamiento tolerante a fallos (en previsualizaciones sin localStorage no rompe)
+const store={
+  get(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+  set(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+};
+const sysLang=()=>((navigator.language||"en").toLowerCase().startsWith("es")?"es":"en");
+const sysTheme=()=>(window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");
+let lang=store.get("sm_lang")||sysLang();
+let theme=store.get("sm_theme")||sysTheme();
+const TL_COLORS={dark:{hot:"#d99a3d",cold:"#2a3648"},light:{hot:"#a86f14",cold:"#c9c2b1"}};
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme",theme);
+  document.querySelector('meta[name="theme-color"]').content=theme==="light"?"#f1efe9":"#07090c";
+  const b=document.getElementById("btnTheme"); if(b) b.textContent=theme==="light"?"\u263E":"\u2600";
+  if(typeof drawTimeline==="function") drawTimeline();
+}
+const t=k=>I18N[lang][k];
+let stateKey="stStandby";
+
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.title=t("name");
+  $("appName").textContent=t("name");
+  $("i-ver").textContent=t("ver");
+  $("i-tagline").textContent=t("tagline");
+  $("i-stSession").textContent=t("stSession");
+  $("i-stEvents").textContent=t("stEvents");
+  $("i-stNoise").textContent=t("stNoise");
+  $("btnMain").textContent=running?t("stop"):t("start");
+  $("btnBlack").textContent=t("black");
+  $("i-cfgTitle").textContent=t("cfgTitle");
+  $("i-thrLbl").textContent=t("thrLbl");
+  $("i-thrHint").textContent=t("thrHint");
+  $("i-quietLbl").textContent=t("quietLbl");
+  $("i-quietHint").textContent=t("quietHint");
+  $("i-autoSave").textContent=t("autoSave");
+  $("i-tlTitle").textContent=t("tlTitle");
+  $("i-evtTitle").textContent=t("evtTitle");
+  $("btnCsv").textContent=t("csv");
+  $("btnAllWav").textContent=t("allWav");
+  $("i-note").textContent=t("note");
+  $("btnLang").innerHTML=t("langBtn");
+  setState(stateKey);
+  $("floorLbl").textContent=t("floor")+": "+(running?noiseFloor.toFixed(0)+" dB":"—");
+  renderEvents();
+}
+function setState(k){
+  stateKey=k;
+  const el=$("stateTag");
+  el.textContent=t(k);
+  el.classList.toggle("evt",k==="stEvent");
+}
+
+// ---------- estado ----------
+const TARGET_SR=16000, PREROLL_S=5, MAX_EVT_S=120, MIN_TRIG_S=0.3, BUCKET_S=15;
+const MAX_STORED_SAMPLES=100*1e6;
+
+let audioCtx=null, stream=null, procNode=null, srcNode=null, wakeLock=null;
+let running=false, sessionStart=0, timerId=null;
+
+let ring=new Int16Array(TARGET_SR*PREROLL_S), ringW=0, ringFilled=false;
+let resampPos=0;
+
+let noiseFloor=-55;
+let inEvent=false, aboveSince=null, quietSince=null;
+let evtChunks=[], evtStart=null, evtPeak=-120, evtSamples=0;
+let events=[];
+let snoreMs=0;
+
+let buckets=[], bucketMax=-120, bucketT0=0;
+let storedSamples=0, memWarned=false;
+
+const $=id=>document.getElementById(id);
+const fmtT=s=>{s=Math.floor(s);const m=Math.floor(s/60),h=Math.floor(m/60);
+  return h?`${h}:${String(m%60).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`:`${m}:${String(s%60).padStart(2,"0")}`;};
+const clock=d=>d.toTimeString().slice(0,8);
+
+// ---------- audio ----------
+async function start(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{
+      echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
+  }catch(e){alert(t("micErr")+e.message+t("micErr2"));return;}
+
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==="suspended") await audioCtx.resume();
+  srcNode=audioCtx.createMediaStreamSource(stream);
+  procNode=audioCtx.createScriptProcessor(4096,1,1);
+  srcNode.connect(procNode); procNode.connect(audioCtx.destination);
+  procNode.onaudioprocess=onAudio;
+
+  running=true; sessionStart=Date.now();
+  ring.fill(0); ringW=0; ringFilled=false; resampPos=0;
+  noiseFloor=-55; inEvent=false; aboveSince=null; quietSince=null;
+  events=[]; buckets=[]; bucketMax=-120; bucketT0=Date.now(); snoreMs=0;
+  storedSamples=0; memWarned=false;
+  renderEvents();
+
+  $("btnMain").textContent=t("stop"); $("btnMain").classList.add("rec");
+  $("btnBlack").disabled=false; $("btnCsv").disabled=true; $("btnAllWav").disabled=true;
+  setState("stListen");
+  timerId=setInterval(tick,1000);
+  requestWake();
+}
+
+function stop(){
+  running=false;
+  if(inEvent) closeEvent(Date.now());
+  clearInterval(timerId);
+  try{procNode&&procNode.disconnect();srcNode&&srcNode.disconnect();}catch(e){}
+  stream&&stream.getTracks().forEach(tr=>tr.stop());
+  audioCtx&&audioCtx.close(); audioCtx=null;
+  wakeLock&&wakeLock.release().catch(()=>{}); wakeLock=null;
+  $("btnMain").textContent=t("start"); $("btnMain").classList.remove("rec");
+  $("btnBlack").disabled=true; setState("stEnded");
+  $("btnCsv").disabled=events.length===0; $("btnAllWav").disabled=events.length===0;
+  flushBucket(); drawTimeline();
+}
+
+function onAudio(e){
+  if(!running) return;
+  const inp=e.inputBuffer.getChannelData(0), sr=audioCtx.sampleRate, step=sr/TARGET_SR;
+  const out=[];
+  let pos=resampPos;
+  while(pos<inp.length){ out.push(inp[Math.floor(pos)]); pos+=step; }
+  resampPos=pos-inp.length;
+
+  let sum=0; for(let i=0;i<inp.length;i++) sum+=inp[i]*inp[i];
+  const rms=Math.sqrt(sum/inp.length), db=20*Math.log10(rms+1e-9);
+  const now=Date.now();
+
+  for(const v of out){
+    const s=Math.max(-32768,Math.min(32767,Math.round(v*32767)));
+    ring[ringW]=s; ringW=(ringW+1)%ring.length; if(ringW===0) ringFilled=true;
+    if(inEvent && evtSamples<TARGET_SR*MAX_EVT_S && storedSamples<MAX_STORED_SAMPLES){
+      evtChunks.push(s); evtSamples++;
+    }
+  }
+
+  const thresh=noiseFloor+parseInt($("rThresh").value,10);
+  if(!inEvent && db<thresh) noiseFloor=noiseFloor*0.999+db*0.001;
+  noiseFloor=Math.max(-80,Math.min(-25,noiseFloor));
+
+  if(db>=thresh){
+    quietSince=null;
+    if(!inEvent){
+      if(aboveSince===null) aboveSince=now;
+      else if(now-aboveSince>=MIN_TRIG_S*1000) openEvent(now);
+    }
+  }else{
+    aboveSince=null;
+    if(inEvent){
+      if(quietSince===null) quietSince=now;
+      else if(now-quietSince>=parseInt($("rQuiet").value,10)*1000) closeEvent(now);
+    }
+  }
+  if(inEvent){ evtPeak=Math.max(evtPeak,db); snoreMs+=inp.length/sr*1000; }
+  if(inEvent && evtSamples>=TARGET_SR*MAX_EVT_S) closeEvent(now);
+
+  if(now-bucketT0>=BUCKET_S*1000){ flushBucket(); bucketT0=now; }
+  bucketMax=Math.max(bucketMax,db);
+
+  updateMeter(db,thresh);
+}
+
+function openEvent(now){
+  inEvent=true; evtStart=now; evtPeak=-120; evtChunks=[]; evtSamples=0;
+  const n=ringFilled?ring.length:ringW, startIdx=ringFilled?ringW:0;
+  for(let i=0;i<n;i++) evtChunks.push(ring[(startIdx+i)%ring.length]);
+  evtSamples=evtChunks.length;
+  setState("stEvent");
+  const d=$("bo-evt"); if(d) d.textContent=t("recEvt");
+}
+
+function closeEvent(now){
+  inEvent=false; quietSince=null; aboveSince=null;
+  const pcm=Int16Array.from(evtChunks); evtChunks=[];
+  storedSamples+=pcm.length;
+  const startD=new Date(evtStart-PREROLL_S*1000);
+  const ev={id:events.length+1,startISO:startD.toISOString(),startClock:clock(startD),
+            dur:pcm.length/TARGET_SR,peak:evtPeak,pcm};
+  events.push(ev);
+  setState("stListen");
+  $("stEvents").textContent=events.length;
+  const d=$("bo-evt"); if(d) d.textContent="";
+  renderEvents();
+  $("btnCsv").disabled=false; $("btnAllWav").disabled=false;
+  if($("cAutoSave").checked) downloadWav(ev);
+  if(storedSamples>=MAX_STORED_SAMPLES && !memWarned){
+    memWarned=true; alert(t("memWarn"));
+  }
+}
+
+// ---------- UI ----------
+let lastMeter=0;
+function updateMeter(db,thresh){
+  const now=performance.now(); if(now-lastMeter<80) return; lastMeter=now;
+  $("dbVal").textContent=db<=-80?"−80":db.toFixed(1);
+  const pct=Math.max(0,Math.min(100,(db+80)/80*100));
+  $("barFill").style.width=pct+"%";
+  $("barThresh").style.left=Math.max(0,Math.min(100,(thresh+80)/80*100))+"%";
+  $("floorLbl").textContent=t("floor")+": "+noiseFloor.toFixed(0)+" dB";
+}
+function tick(){
+  $("stElapsed").textContent=fmtT((Date.now()-sessionStart)/1000);
+  $("stSnoreTime").textContent=fmtT(snoreMs/1000);
+  const c=$("bo-clock"); if(c) c.textContent=clock(new Date()).slice(0,5);
+  if(buckets.length%4===0) drawTimeline();
+}
+function flushBucket(){ buckets.push(bucketMax); bucketMax=-120; }
+function drawTimeline(){
+  const cv=$("tlCanvas"),ctx=cv.getContext("2d");
+  ctx.clearRect(0,0,cv.width,cv.height);
+  if(!buckets.length) return;
+  const n=buckets.length,w=cv.width/Math.max(n,960);
+  for(let i=0;i<n;i++){
+    const db=buckets[i],h=Math.max(2,(db+80)/80*cv.height);
+    const c=TL_COLORS[theme];
+    ctx.fillStyle=db>-45?c.hot:c.cold;
+    ctx.fillRect(i*w,cv.height-h,Math.max(1,w-1),h);
+  }
+}
+function renderEvents(){
+  const el=$("evtList");
+  if(!events.length){el.innerHTML='<div class="empty">'+t("empty")+"</div>";return;}
+  el.innerHTML="";
+  for(const ev of events.slice().reverse()){
+    const row=document.createElement("div");row.className="evt-row";
+    row.innerHTML=`<span class="evt-t">${ev.startClock}</span>
+      <span class="evt-d">${ev.dur.toFixed(1)} s · ${t("peak")} ${ev.peak.toFixed(0)} dB</span>`;
+    const bP=document.createElement("button");bP.textContent="▶";
+    bP.onclick=()=>{const a=new Audio(URL.createObjectURL(wavBlob(ev.pcm)));a.play();};
+    const bD=document.createElement("button");bD.textContent="WAV";
+    bD.onclick=()=>downloadWav(ev);
+    row.append(bP,bD);el.appendChild(row);
+  }
+}
+
+// ---------- WAV / exportación ----------
+function wavBlob(pcm){
+  const buf=new ArrayBuffer(44+pcm.length*2),v=new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,"RIFF");v.setUint32(4,36+pcm.length*2,true);ws(8,"WAVE");ws(12,"fmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,TARGET_SR,true);v.setUint32(28,TARGET_SR*2,true);
+  v.setUint16(32,2,true);v.setUint16(34,16,true);ws(36,"data");
+  v.setUint32(40,pcm.length*2,true);
+  new Int16Array(buf,44).set(pcm);
+  return new Blob([buf],{type:"audio/wav"});
+}
+function dl(blob,name){
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function downloadWav(ev){
+  dl(wavBlob(ev.pcm),`${t("wavPrefix")}_${ev.startISO.replace(/[:.]/g,"-")}_${ev.dur.toFixed(0)}s.wav`);
+}
+$("btnAllWav").onclick=async()=>{for(const ev of events){downloadWav(ev);await new Promise(r=>setTimeout(r,600));}};
+$("btnCsv").onclick=()=>{
+  let csv="id,start_iso,clock,duration_s,peak_dbfs\n";
+  for(const ev of events) csv+=`${ev.id},${ev.startISO},${ev.startClock},${ev.dur.toFixed(1)},${ev.peak.toFixed(1)}\n`;
+  csv+=`\n# session_start,${new Date(sessionStart).toISOString()}\n# session_duration_s,${((Date.now()-sessionStart)/1000).toFixed(0)}\n# noise_time_s,${(snoreMs/1000).toFixed(0)}\n`;
+  dl(new Blob([csv],{type:"text/csv"}),`snoremeter_${new Date(sessionStart).toISOString().slice(0,10)}.csv`);
+};
+
+// ---------- wake lock / pantalla ----------
+async function requestWake(){
+  try{ wakeLock=await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release",()=>{wakeLock=null;});
+  }catch(e){ console.warn("WakeLock:",e.message); }
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"&&running&&!wakeLock) requestWake();
+  if(document.visibilityState==="visible"&&running&&audioCtx&&audioCtx.state==="suspended") audioCtx.resume();
+});
+$("btnBlack").onclick=()=>{$("blackout").classList.add("on");$("bo-dot").classList.add("live");
+  document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{});};
+$("blackout").onclick=()=>{$("blackout").classList.remove("on");
+  document.fullscreenElement&&document.exitFullscreen().catch(()=>{});};
+
+// ---------- botones / ajustes ----------
+$("btnMain").onclick=()=>running?stop():start();
+$("btnLang").onclick=()=>{lang=lang==="es"?"en":"es";store.set("sm_lang",lang);applyLang();};
+$("btnTheme").onclick=()=>{theme=theme==="light"?"dark":"light";store.set("sm_theme",theme);applyTheme();};
+$("rThresh").oninput=e=>{$("oThresh").textContent=e.target.value+" dB";store.set("sm_thresh",e.target.value);};
+$("rQuiet").oninput=e=>{$("oQuiet").textContent=e.target.value+" s";store.set("sm_quiet",e.target.value);};
+$("cAutoSave").onchange=e=>store.set("sm_autosave",e.target.checked?"1":"0");
+// restaurar ajustes del detector
+(function(){
+  const th=store.get("sm_thresh"),qu=store.get("sm_quiet"),as=store.get("sm_autosave");
+  if(th){$("rThresh").value=th;$("oThresh").textContent=th+" dB";}
+  if(qu){$("rQuiet").value=qu;$("oQuiet").textContent=qu+" s";}
+  if(as==="1")$("cAutoSave").checked=true;
+})();
+window.addEventListener("beforeunload",e=>{
+  if(running||events.length){e.preventDefault();e.returnValue=t("unload");}
+});
+applyTheme();
+applyLang();
+</script>
+</body>
+</html>
